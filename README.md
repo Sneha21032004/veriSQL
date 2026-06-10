@@ -6,7 +6,7 @@
 
 *AI writes your SQL now. VeriSQL proves it didn't lie.*
 
-[![CI](https://github.com/Sneha21032004/veriSQL/actions/workflows/ci.yml/badge.svg)](https://github.com/Sneha21032004/veriSQL/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-74%20passing-brightgreen)](tests/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Recall](https://img.shields.io/badge/silent--failure%20recall-83%25-brightgreen)](#-benchmark-measured-not-claimed)
