@@ -1,6 +1,6 @@
 from typing import Any
 
-from verisql.connectors.base import ColumnStats, MUTATION_KEYWORDS
+from verisql.connectors.base import ColumnStats, ensure_limited, guard_mutation
 
 try:
     import snowflake.connector as sf
@@ -23,13 +23,6 @@ class SnowflakeConnector:
     def connect(cls, **kwargs: Any) -> "SnowflakeConnector":
         schema = kwargs.get("schema")
         return cls(sf.connect(**kwargs), schema=schema)
-
-    @staticmethod
-    def _guard_mutation(sql: str) -> None:
-        lowered = sql.lstrip().lower()
-        for kw in MUTATION_KEYWORDS:
-            if lowered.startswith(kw):
-                raise PermissionError(f"Refusing to execute mutation: starts with {kw.strip()}")
 
     def _query(self, sql: str, params: tuple | None = None) -> list[tuple[Any, ...]]:
         cur = self._conn.cursor()
@@ -62,13 +55,12 @@ class SnowflakeConnector:
         return [r[0] for r in rows]
 
     def execute_readonly(self, sql: str, max_rows: int = 100) -> list[tuple[Any, ...]]:
-        self._guard_mutation(sql)
-        if " limit " not in sql.lower():
-            sql = f"SELECT * FROM ({sql.rstrip(';')}) AS _verisql_sub LIMIT {max_rows}"
+        guard_mutation(sql, self.dialect)
+        sql = ensure_limited(sql, max_rows)
         return self._query(sql)
 
     def explain(self, sql: str) -> str:
-        self._guard_mutation(sql)
+        guard_mutation(sql, self.dialect)
         rows = self._query(f"EXPLAIN USING TEXT {sql.rstrip(';')}")
         return "\n".join(str(r[-1]) for r in rows)
 

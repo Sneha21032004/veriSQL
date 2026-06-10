@@ -1,6 +1,6 @@
 from typing import Any
 
-from verisql.connectors.base import ColumnStats, MUTATION_KEYWORDS
+from verisql.connectors.base import ColumnStats, ensure_limited, guard_mutation
 
 try:
     import duckdb
@@ -32,25 +32,14 @@ class DuckDBConnector:
         ).fetchall()
         return [r[0] for r in rows]
 
-    @staticmethod
-    def _guard_mutation(sql: str) -> None:
-        lowered = sql.lstrip().lower()
-        for kw in MUTATION_KEYWORDS:
-            if lowered.startswith(kw):
-                raise PermissionError(f"Refusing to execute mutation: starts with {kw.strip()}")
-
     def execute_readonly(self, sql: str, max_rows: int = 100) -> list[tuple[Any, ...]]:
-        # DuckDB lacks a hard read-only per-statement flag; we rely on parser refusal.
-        self._guard_mutation(sql)
-        lowered = sql.lower()
-        # Wrap with LIMIT if not present, to keep verifier cheap
-        if " limit " not in lowered:
-            sql = f"SELECT * FROM ({sql.rstrip(';')}) AS _verisql_sub LIMIT {max_rows}"
-        return self._conn.execute(sql).fetchall()
+        # DuckDB lacks a hard read-only per-statement flag; we rely on AST refusal.
+        guard_mutation(sql, self.dialect)
+        return self._conn.execute(ensure_limited(sql, max_rows)).fetchall()
 
     def explain(self, sql: str) -> str:
         """Return the query plan text without executing the query."""
-        self._guard_mutation(sql)
+        guard_mutation(sql, self.dialect)
         rows = self._conn.execute(f"EXPLAIN {sql.rstrip(';')}").fetchall()
         return "\n".join(str(r[-1]) for r in rows)
 

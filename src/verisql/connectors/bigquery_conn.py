@@ -1,6 +1,6 @@
 from typing import Any
 
-from verisql.connectors.base import ColumnStats, MUTATION_KEYWORDS
+from verisql.connectors.base import ColumnStats, ensure_limited, guard_mutation
 
 try:
     from google.cloud import bigquery
@@ -25,13 +25,6 @@ class BigQueryConnector:
     def connect(cls, dataset: str, project: str | None = None, **kwargs: Any) -> "BigQueryConnector":
         return cls(bigquery.Client(project=project, **kwargs), dataset=dataset)
 
-    @staticmethod
-    def _guard_mutation(sql: str) -> None:
-        lowered = sql.lstrip().lower()
-        for kw in MUTATION_KEYWORDS:
-            if lowered.startswith(kw):
-                raise PermissionError(f"Refusing to execute mutation: starts with {kw.strip()}")
-
     def list_tables(self) -> list[str]:
         rows = self._client.query(
             f"SELECT table_name FROM `{self._dataset}.INFORMATION_SCHEMA.TABLES`"
@@ -49,16 +42,15 @@ class BigQueryConnector:
         return [r[0] for r in rows]
 
     def execute_readonly(self, sql: str, max_rows: int = 100) -> list[tuple[Any, ...]]:
-        self._guard_mutation(sql)
-        if " limit " not in sql.lower():
-            sql = f"SELECT * FROM ({sql.rstrip(';')}) AS _verisql_sub LIMIT {max_rows}"
+        guard_mutation(sql, self.dialect)
+        sql = ensure_limited(sql, max_rows)
         cfg = bigquery.QueryJobConfig(maximum_bytes_billed=self._max_bytes)
         rows = self._client.query(sql, job_config=cfg).result()
         return [tuple(r.values()) for r in rows]
 
     def explain(self, sql: str) -> str:
         """Dry-run: validate + estimate scanned bytes without executing."""
-        self._guard_mutation(sql)
+        guard_mutation(sql, self.dialect)
         cfg = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
         job = self._client.query(sql, job_config=cfg)
         gib = job.total_bytes_processed / (1024 ** 3) if job.total_bytes_processed else 0.0

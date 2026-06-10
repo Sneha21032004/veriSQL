@@ -14,10 +14,15 @@ class SchemaCheck(Check):
         if ast is None or ctx.connector is None:
             return
 
+        # CTE names are query-local relations, not schema tables — never flag them
+        cte_names = {cte.alias_or_name.lower() for cte in ast.find_all(exp.CTE)}
+
         # collect table refs
         tables: dict[str, str] = {}  # alias_or_name -> real_name
         for t in ast.find_all(exp.Table):
             real = t.name
+            if real.lower() in cte_names:
+                continue
             alias = t.alias_or_name
             tables[alias] = real
 

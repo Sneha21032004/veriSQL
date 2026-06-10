@@ -1,6 +1,6 @@
 from typing import Any
 
-from verisql.connectors.base import ColumnStats, MUTATION_KEYWORDS
+from verisql.connectors.base import ColumnStats, ensure_limited, guard_mutation
 
 try:
     import psycopg
@@ -24,13 +24,6 @@ class PostgresConnector:
         # autocommit off; we wrap reads in explicit read-only txns
         conn = psycopg.connect(dsn, autocommit=False)
         return cls(conn, schema=schema)
-
-    @staticmethod
-    def _guard_mutation(sql: str) -> None:
-        lowered = sql.lstrip().lower()
-        for kw in MUTATION_KEYWORDS:
-            if lowered.startswith(kw):
-                raise PermissionError(f"Refusing to execute mutation: starts with {kw.strip()}")
 
     def _read(self, sql: str, params: tuple | None = None) -> list[tuple[Any, ...]]:
         """Execute inside a guaranteed-rolled-back read-only transaction."""
@@ -59,13 +52,12 @@ class PostgresConnector:
         return [r[0] for r in rows]
 
     def execute_readonly(self, sql: str, max_rows: int = 100) -> list[tuple[Any, ...]]:
-        self._guard_mutation(sql)
-        if " limit " not in sql.lower():
-            sql = f"SELECT * FROM ({sql.rstrip(';')}) AS _verisql_sub LIMIT {max_rows}"
+        guard_mutation(sql, self.dialect)
+        sql = ensure_limited(sql, max_rows)
         return self._read(sql)
 
     def explain(self, sql: str) -> str:
-        self._guard_mutation(sql)
+        guard_mutation(sql, self.dialect)
         # plain EXPLAIN — no ANALYZE, so the query is never executed
         rows = self._read(f"EXPLAIN {sql.rstrip(';')}")
         return "\n".join(str(r[0]) for r in rows)
