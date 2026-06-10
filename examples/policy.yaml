@@ -1,0 +1,9 @@
+# Business invariants a correct result must satisfy, plus structural filter rules.
+# Load with: Policy.from_yaml("examples/policy.yaml")
+
+invariants:
+  - "amount >= 0"            # revenue/amounts are never negative
+  - "amount <= 1000000"      # sanity ceiling: single order under $1M
+
+required_filters:
+  orders: ["created_at"]     # any query touching orders must filter on a date

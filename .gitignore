@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+.venv/
+venv/
+*.duckdb
+.env
+.remember/
+.pytest_tmp
+audit_trail.jsonl

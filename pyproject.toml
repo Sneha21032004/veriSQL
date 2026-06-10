@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "verisql"
+version = "0.1.0"
+description = "Runtime verifier for LLM-generated SQL. Catches silent wrong answers before they hit your dashboard."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "verisql contributors" }]
+keywords = ["sql", "llm", "text-to-sql", "verification", "ai-agents", "data-quality"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+]
+dependencies = [
+    "sqlglot>=25.0.0",
+    "pydantic>=2.0",
+    "click>=8.1",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+duckdb = ["duckdb>=1.0"]
+postgres = ["psycopg[binary]>=3.1"]
+anthropic = ["anthropic>=0.40"]
+openai = ["openai>=1.40"]
+snowflake = ["snowflake-connector-python>=3.0"]
+bigquery = ["google-cloud-bigquery>=3.0"]
+dev = ["pytest>=8.0", "duckdb>=1.0", "pyyaml>=6.0"]
+
+[project.scripts]
+verisql = "verisql.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/verisql/verisql"
+Issues = "https://github.com/verisql/verisql/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/verisql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--basetemp=.pytest_tmp"
