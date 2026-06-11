@@ -6,7 +6,8 @@
 
 *AI writes your SQL now. VeriSQL proves it didn't lie — and fixes it when it did.*
 
-[![Tests](https://img.shields.io/badge/tests-96%20passing-brightgreen)](tests/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Sneha21032004/veriSQL/blob/main/notebooks/verisql_proof.ipynb)
+[![Tests](https://img.shields.io/badge/tests-102%20passing-brightgreen)](tests/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Recall](https://img.shields.io/badge/silent--failure%20recall-83%25-brightgreen)](#-benchmark-measured-not-claimed)
@@ -35,6 +36,8 @@ SELECT * FROM customers WHERE region NOT IN (SELECT banned FROM blocklist);
 An LLM judging its own SQL is non-deterministic, biased toward self-approval, and costs tokens on every call. A regulator will not accept "the model checked itself."
 
 **VeriSQL is the independent, deterministic layer that can.**
+
+**Don't trust this README — [reproduce the proof yourself in Colab](https://colab.research.google.com/github/Sneha21032004/veriSQL/blob/main/notebooks/verisql_proof.ipynb), 2 minutes, browser only.** Deterministic means it works the same on every machine.
 
 ## 🔧 The 10-second demo
 
