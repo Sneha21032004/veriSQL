@@ -13,3 +13,4 @@ venv/
 .remember/
 .pytest_tmp
 audit_trail.jsonl
+demo_warehouse.duckdb
