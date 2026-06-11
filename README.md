@@ -2,11 +2,11 @@
 
 # VeriSQL
 
-**Audit-grade verification gateway for AI-generated SQL.**
+**The deterministic oracle for AI-generated SQL: verify it, auto-repair it, prove it.**
 
-*AI writes your SQL now. VeriSQL proves it didn't lie.*
+*AI writes your SQL now. VeriSQL proves it didn't lie — and fixes it when it did.*
 
-[![Tests](https://img.shields.io/badge/tests-74%20passing-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-96%20passing-brightgreen)](tests/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Recall](https://img.shields.io/badge/silent--failure%20recall-83%25-brightgreen)](#-benchmark-measured-not-claimed)
@@ -36,21 +36,40 @@ An LLM judging its own SQL is non-deterministic, biased toward self-approval, an
 
 **VeriSQL is the independent, deterministic layer that can.**
 
+## 🔧 The 10-second demo
+
+```bash
+$ verisql fix --sql "SELECT * FROM customers WHERE id NOT IN (1, NULL)"
+
+Auto-repair: 1 fix(es) in 2 round(s) -> VERIFIED
+  [not_in_null_literal] NOT IN list contained NULL -> always-empty result; NULL removed
+      - NOT id IN (1, NULL)
+      + NOT id IN (1)
+
+--- final SQL ---
+SELECT * FROM customers WHERE NOT id IN (1)
+```
+
+That input query returns **zero rows, always** — one NULL and SQL's three-valued logic silently empties the result. An LLM judging it approves it most of the time. VeriSQL catches it **100% of the time, in ~2ms, for $0** — then rewrites it with a provably-correct AST transform and re-verifies.
+
+Why this matters: code agents run autonomously because compilers and tests give deterministic feedback. **SQL has no compiler error for "wrong answer."** VeriSQL is that missing oracle — it closes the loop so text-to-SQL agents can self-correct instead of waiting for a human.
+
 ## ⚡ What it does
 
 ```
-            ┌──────────────────────── VeriSQL gateway ───────────────────────┐
-AI writes   │  12 deterministic checks      gated LLM critic     audit log   │   human sees
-   SQL ───▶ │  (AST · schema · plan ·  ───▶ (only if ambiguous, ─▶ (hash-    │ ──▶ verified
-            │   execution · invariants)      any provider)         chained)  │     number
-            └─────────────────────────────────────────────────────────────────┘
-                     zero LLM tokens              ~10% of queries
+            ┌──────────────────── VeriSQL oracle ─────────────────────┐
+AI writes   │  12 deterministic checks ──▶ AST auto-repair ──▶ re-     │   verified SQL
+   SQL ───▶ │  (AST · schema · plan ·      (provably-correct  verify  │ ──▶ ships; audit
+            │   execution · invariants)     rewrites, $0)              │     trail appended
+            └───────────────────────────────────────────────────────────┘
+               zero LLM tokens          escalate only the unfixable (<10%)
 ```
 
-Three modes, one engine:
+Four modes, one engine:
 
 | Mode | What it answers | Entry point |
 |---|---|---|
+| 🔧 **Repair** | "Fix the query autonomously and prove it's now right" | `verify_and_repair(...)` / `verisql fix` |
 | 🔍 **Verify** | "Is this AI-written query silently wrong?" | `verify(...)` / `verisql check` |
 | 🧾 **Audit** | "Prove to an auditor what the AI did and what we caught" | `AuditLog` / `verisql audit` |
 | 🔁 **Diff** | "Is this LLM-translated query equivalent to the legacy original?" | `verify_equivalence(...)` / `verisql diff` |

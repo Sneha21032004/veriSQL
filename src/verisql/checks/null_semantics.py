@@ -36,11 +36,18 @@ class NullSemanticsCheck(Check):
                     if isinstance(inner, exp.In):
                         col = inner.this
                         if isinstance(col, exp.Column) and not self._has_null_guard(where, col):
-                            literal_null = any(
-                                isinstance(e, exp.Null) for e in inner.expressions
-                            )
-                            tag = " — list contains NULL → ALWAYS empty result" if literal_null else ""
-                            not_in_offenders.append(f"{col.sql()} NOT IN (...){tag}")
+                            if inner.expressions:
+                                # literal list: only dangerous if it actually contains NULL
+                                if any(isinstance(e, exp.Null) for e in inner.expressions):
+                                    not_in_offenders.append(
+                                        f"{col.sql()} NOT IN (...) — list contains NULL → ALWAYS empty result"
+                                    )
+                            elif inner.args.get("query") is not None:
+                                # subquery: dangerous unless it guards its projection with IS NOT NULL
+                                if not self._subquery_null_safe(inner.args["query"]):
+                                    not_in_offenders.append(
+                                        f"{col.sql()} NOT IN (subquery) — empty result if subquery yields NULL"
+                                    )
 
             if not_in_offenders:
                 report.add(Flag(
@@ -59,6 +66,27 @@ class NullSemanticsCheck(Check):
                     message="Predicates silently drop NULL rows: " + "; ".join(neq_offenders),
                     details={"neq": neq_offenders},
                 ))
+
+    @staticmethod
+    def _subquery_null_safe(query: exp.Expression) -> bool:
+        """True if the NOT IN subquery filters NULLs out of its projected column."""
+        sel = query.this if isinstance(query, exp.Subquery) else query
+        if not isinstance(sel, exp.Select) or len(sel.expressions) != 1:
+            return False
+        proj = sel.expressions[0]
+        col = proj.this if isinstance(proj, exp.Alias) else proj
+        if not isinstance(col, exp.Column):
+            return False
+        where = sel.args.get("where")
+        if where is None:
+            return False
+        target = col.sql()
+        for not_node in where.find_all(exp.Not):
+            inner = not_node.this
+            if isinstance(inner, exp.Is) and isinstance(inner.expression, exp.Null):
+                if inner.this.sql() == target:
+                    return True
+        return False
 
     @staticmethod
     def _has_null_guard(where: exp.Expression, col: exp.Column) -> bool:

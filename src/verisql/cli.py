@@ -103,5 +103,26 @@ def audit(log_path: str, evidence: bool) -> None:
     sys.exit(2)
 
 
+@main.command()
+@click.option("--sql", required=True, help="AI-generated SQL to verify and auto-repair.")
+@click.option("--question", default=None, help="The natural-language question behind the SQL.")
+@click.option("--dialect", default="duckdb", help="sqlglot dialect.")
+@click.option("--duckdb-path", default=None, help="DuckDB file for live verification.")
+def fix(sql: str, question: str | None, dialect: str, duckdb_path: str | None) -> None:
+    """Verify, auto-repair, and re-verify a query. Prints the corrected SQL."""
+    from verisql.repair import verify_and_repair
+
+    connector = None
+    if duckdb_path:
+        from verisql.connectors.duckdb_conn import DuckDBConnector
+        connector = DuckDBConnector.from_path(duckdb_path)
+
+    result = verify_and_repair(sql, question=question, dialect=dialect, connector=connector)
+    click.echo(result.summary())
+    click.echo("\n--- final SQL ---")
+    click.echo(result.final_sql)
+    sys.exit(0 if result.verified else 1)
+
+
 if __name__ == "__main__":
     main()
