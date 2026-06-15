@@ -1,0 +1,8 @@
+# verisql extension — deterministic SQL verification inside Postgres
+comment = 'Deterministic verification oracle for AI-generated SQL'
+default_version = '0.1.0'
+module_pathname = '$libdir/verisql'
+relocatable = false
+schema = 'verisql'
+superuser = false
+trusted = true

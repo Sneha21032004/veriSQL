@@ -14,3 +14,4 @@ venv/
 .pytest_tmp
 audit_trail.jsonl
 demo_warehouse.duckdb
+verisql_history.db

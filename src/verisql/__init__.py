@@ -4,6 +4,9 @@ from verisql.policy import Policy
 from verisql.audit import AuditLog, AuditRecord
 from verisql.equivalence import verify_equivalence, EquivalenceReport
 from verisql.repair import verify_and_repair, repair_sql, RepairResult, Repair
+from verisql.repair_rules import YamlRule, load_rules, apply_rules
+from verisql.history import QueryHistory, DriftReport
+from verisql.agent import run_verified, AgentResult
 from verisql.critic import (
     Critic,
     CriticRequest,
@@ -33,5 +36,8 @@ __all__ = [
     "repair_sql",
     "RepairResult",
     "Repair",
+    "YamlRule", "load_rules", "apply_rules",
+    "QueryHistory", "DriftReport",
+    "run_verified", "AgentResult",
 ]
 __version__ = "0.1.0"

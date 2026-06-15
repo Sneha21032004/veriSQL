@@ -1,0 +1,9 @@
+# Community-contributable repair rules. Drop new ones here without writing Python.
+rules:
+  - name: prefer_current_timestamp
+    description: Vendor-specific UTC_NOW() rewritten to portable CURRENT_TIMESTAMP
+    match:
+      kind: function
+      name: utc_now
+    replace:
+      sql: CURRENT_TIMESTAMP
