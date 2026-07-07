@@ -1,0 +1,62 @@
+name: "VeriSQL dbt Gate"
+description: >-
+  Verify every model in a dbt project for silently-wrong SQL (NULL semantics,
+  cartesian joins, timestamp-equality bugs) and fail the build on findings.
+  sqlfluff catches style; VeriSQL catches wrong answers.
+author: "verisql contributors"
+branding:
+  icon: "shield"
+  color: "green"
+
+inputs:
+  project-dir:
+    description: "dbt project directory containing target/manifest.json (run `dbt compile` first)."
+    required: false
+    default: "."
+  manifest:
+    description: "Explicit path to manifest.json (overrides project-dir)."
+    required: false
+    default: ""
+  select:
+    description: "Space-separated model names to verify (default: all models)."
+    required: false
+    default: ""
+  policy:
+    description: "Path to a VeriSQL policy YAML (invariants, required filters, PII columns)."
+    required: false
+    default: ""
+  warn-only:
+    description: "Report findings but never fail the build (advisory mode)."
+    required: false
+    default: "false"
+  verisql-version:
+    description: "verisql package spec to install (e.g. 'verisql==0.3.0'). Default: latest."
+    required: false
+    default: "verisql"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install VeriSQL
+      shell: bash
+      run: pip install --quiet "${{ inputs.verisql-version }}"
+
+    - name: Verify dbt models
+      shell: bash
+      run: |
+        args=()
+        if [ -n "${{ inputs.manifest }}" ]; then
+          args+=(--manifest "${{ inputs.manifest }}")
+        else
+          args+=(--project-dir "${{ inputs.project-dir }}")
+        fi
+        if [ -n "${{ inputs.policy }}" ]; then
+          args+=(--policy "${{ inputs.policy }}")
+        fi
+        for model in ${{ inputs.select }}; do
+          args+=(--select "$model")
+        done
+        if [ "${{ inputs.warn-only }}" = "true" ]; then
+          args+=(--warn-only)
+        fi
+        verisql dbt "${args[@]}"

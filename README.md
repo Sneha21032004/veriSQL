@@ -190,7 +190,13 @@ $ verisql dbt --project-dir .
 
 ```yaml
 # .github/workflows/sql-gate.yml — the whole integration
-- run: dbt compile && pip install verisql && verisql dbt --project-dir .
+- run: dbt compile
+- uses: Sneha21032004/veriSQL@main        # or: pip install verisql && verisql dbt
+  with:
+    project-dir: .
+    # policy: policy.yaml                 # optional governance rules
+    # warn-only: "true"                   # advisory mode
+    # verisql-version: "git+https://github.com/Sneha21032004/veriSQL.git"  # until PyPI release
 ```
 
 ## 🧩 Drop into any agent framework
@@ -309,7 +315,7 @@ examples/            quickstart · agent_loop · compliance_gateway
 - [x] Migration equivalence verifier (structural + data)
 - [x] dbt CI gate (`verisql dbt`) — verify every model in a project, no dbt dependency
 - [x] Agent framework adapters — `@sql_guard`, OpenAI function calling, LangChain, LlamaIndex
-- [ ] GitHub Action wrapping `verisql dbt` for one-click marketplace install
+- [x] GitHub Action wrapping `verisql dbt` (`uses: Sneha21032004/veriSQL@main`)
 - [ ] Bulk diff runner (`verisql diff --batch manifest.csv`) for 1000s of migration queries
 - [ ] Corpus expansion from Spider/BIRD + real-world misfires
 - [ ] Hex / Snowflake Cortex integration hooks
