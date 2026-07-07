@@ -35,6 +35,8 @@ openai = ["openai>=1.40"]
 mcp = ["mcp>=1.2"]
 snowflake = ["snowflake-connector-python>=3.0"]
 bigquery = ["google-cloud-bigquery>=3.0"]
+langchain = ["langchain-core>=0.2"]
+llamaindex = ["llama-index-core>=0.10"]
 dev = ["pytest>=8.0", "duckdb>=1.0", "pyyaml>=6.0"]
 
 [project.scripts]

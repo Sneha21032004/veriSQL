@@ -124,5 +124,62 @@ def fix(sql: str, question: str | None, dialect: str, duckdb_path: str | None) -
     sys.exit(0 if result.verified else 1)
 
 
+@main.command()
+@click.option("--project-dir", default=".", help="dbt project directory (containing target/manifest.json).")
+@click.option("--manifest", "manifest_path", default=None, help="Explicit path to manifest.json (overrides --project-dir).")
+@click.option("--select", multiple=True, help="Only verify these model names (repeatable).")
+@click.option("--policy", "policy_path", default=None, help="Path to a policy YAML file.")
+@click.option("--duckdb-path", default=None, help="DuckDB file for live checks (default is parse-only).")
+@click.option("--warn-only", is_flag=True, help="Report findings but always exit 0 (do not fail CI).")
+@click.option("--json-out", is_flag=True, help="Emit JSON report instead of text.")
+def dbt(
+    project_dir: str,
+    manifest_path: str | None,
+    select: tuple[str, ...],
+    policy_path: str | None,
+    duckdb_path: str | None,
+    warn_only: bool,
+    json_out: bool,
+) -> None:
+    """Verify every model in a dbt project — the CI gate for silent SQL bugs.
+
+    Reads target/manifest.json (run `dbt compile` first). Parse-only by
+    default: no warehouse credentials needed.
+    """
+    import json as _json
+    from verisql.dbt_gate import (
+        extract_models, find_manifest, load_manifest, render_text, verify_project,
+    )
+
+    try:
+        path = manifest_path or find_manifest(project_dir)
+        manifest_data = load_manifest(path)
+    except (FileNotFoundError, ValueError) as e:
+        click.echo(f"error: {e}", err=False)
+        sys.exit(2)
+
+    connector = None
+    if duckdb_path:
+        from verisql.connectors.duckdb_conn import DuckDBConnector
+        connector = DuckDBConnector.from_path(duckdb_path)
+
+    policy = None
+    if policy_path:
+        from verisql.policy import Policy
+        policy = Policy.from_yaml(policy_path)
+
+    models = extract_models(manifest_data, select=list(select) or None)
+    result = verify_project(models, policy=policy, connector=connector)
+
+    if json_out:
+        click.echo(_json.dumps(result.to_dict(), indent=2))
+    else:
+        click.echo(render_text(result))
+
+    if warn_only:
+        sys.exit(0)
+    sys.exit(2 if result.blocked else (1 if result.review else 0))
+
+
 if __name__ == "__main__":
     main()

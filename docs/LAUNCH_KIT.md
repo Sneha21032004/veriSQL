@@ -80,6 +80,44 @@ Python · MIT · DuckDB/Postgres/Snowflake/BigQuery
 
 ---
 
+## 3b. dbt community angle (dbt Slack #tools-showcase, r/dataengineering follow-up)
+
+**Title:**
+
+> sqlfluff catches style. What catches wrong answers? `verisql dbt` — a CI gate for silently-wrong SQL in dbt models
+
+**Body:**
+
+AI writes more and more dbt models now (Copilot, Cursor, chat-generated SQL pasted in). Style linting won't catch a `NOT IN` that returns zero rows forever, a comma-join cartesian, or a timestamp `=` that only matches midnight.
+
+`verisql dbt --project-dir .` reads your compiled `target/manifest.json` — no dbt dependency, no warehouse credentials, parse-only, seconds in CI — and verifies every model with 12 deterministic AST checks. Non-zero exit blocks the merge. One line in your workflow after `dbt compile`.
+
+Dialect auto-detected from your adapter (Snowflake/BigQuery/Postgres/Databricks). MIT licensed.
+
+---
+
+## 3c. Agent-builder angle (r/LocalLLaMA, LangChain/LlamaIndex Discords, X)
+
+**Hook:**
+
+> Your SQL agent needs a compiler, not vibes. VeriSQL is now one import in LangChain, LlamaIndex, OpenAI function calling, or a plain decorator.
+
+**Body:**
+
+Code agents self-correct because compilers give deterministic feedback. SQL agents had nothing — until now:
+
+```python
+from verisql.integrations import sql_guard
+
+@sql_guard(connector=db, question_arg="question")
+def write_sql(question: str) -> str:
+    return llm.complete(...)
+```
+
+Generated SQL gets verified (12 deterministic AST checks), auto-repaired (provably-correct tree rewrites), re-verified — or raises with a machine-readable diagnosis the agent feeds back into its next attempt. Zero LLM tokens for the check. Works with any OpenAI-compatible provider via ready-made function-calling specs, plus MCP for Claude.
+
+---
+
 ## 4. LinkedIn (your network + Hemant's)
 
 The "AI wrote our SQL and the number was wrong for 3 weeks" story is becoming universal in data teams.

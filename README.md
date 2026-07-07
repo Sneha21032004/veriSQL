@@ -7,7 +7,7 @@
 *AI writes your SQL now. VeriSQL proves it didn't lie — and fixes it when it did.*
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Sneha21032004/veriSQL/blob/main/notebooks/verisql_proof.ipynb)
-[![Tests](https://img.shields.io/badge/tests-102%20passing-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-139%20passing-brightgreen)](tests/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Recall](https://img.shields.io/badge/silent--failure%20recall-83%25-brightgreen)](#-benchmark-measured-not-claimed)
@@ -170,6 +170,59 @@ Two independent signals, cheapest first:
 
 Verdicts — `equivalent · likely_equivalent · likely_not_equivalent · not_equivalent` — sort the batch so humans review only the risky tail.
 
+## 🧱 dbt CI gate — `verisql dbt`
+
+sqlfluff catches style. **VeriSQL catches wrong answers.** One command verifies every model in a dbt project for the silent-failure class of bugs — after `dbt compile`, before merge:
+
+```bash
+$ verisql dbt --project-dir .
+
+  PASS  stg_orders        passed  (0 flag(s))
+  FAIL  fct_clean_users   blocked (1 flag(s))
+          [ERROR] null_semantics: NOT IN with NULL always returns zero rows
+2 model(s): 1 passed, 0 review, 1 blocked, 0 skipped
+```
+
+- **No dbt dependency, no warehouse credentials** — reads `target/manifest.json` (plain JSON), parse-only by default, runs in seconds in any CI
+- Dialect auto-detected from the manifest's adapter type (Snowflake, BigQuery, Postgres, Databricks, …)
+- Non-zero exit blocks the merge; `--warn-only` for advisory mode; `--json-out` for tooling; `--select` to scope
+- Add `--duckdb-path` (or a policy YAML) for live schema/plan/invariant checks
+
+```yaml
+# .github/workflows/sql-gate.yml — the whole integration
+- run: dbt compile && pip install verisql && verisql dbt --project-dir .
+```
+
+## 🧩 Drop into any agent framework
+
+The oracle is one import away, whatever your stack:
+
+```python
+# Framework-free — zero extra deps
+from verisql.integrations import sql_guard, SQLVerificationError
+
+@sql_guard(connector=db, question_arg="question")
+def write_sql(question: str) -> str:
+    return llm.complete(...)          # returns verified (auto-repaired) SQL
+                                      # raises SQLVerificationError w/ diagnosis if unfixable
+```
+
+```python
+# OpenAI-compatible function calling — works with OpenAI/Groq/Ollama/vLLM/...
+from verisql.integrations.openai_tools import OPENAI_TOOL_SPECS, dispatch_tool_call
+resp = client.chat.completions.create(model=m, messages=msgs, tools=OPENAI_TOOL_SPECS)
+result = dispatch_tool_call(call.function.name, call.function.arguments, connector=db)
+```
+
+```python
+# LangChain                                  # LlamaIndex
+from verisql.integrations.langchain import (  # from verisql.integrations.llamaindex import (
+    make_verisql_tools)                       #     make_verisql_tools)
+tools = make_verisql_tools(connector=db)      # same call, same two tools
+```
+
+All surfaces return the **same payload shapes as the MCP server** — verdict, confidence, diagnosis, repaired SQL — so switching frameworks never re-teaches the agent. Extras: `pip install verisql[langchain]` / `verisql[llamaindex]`; the guard and OpenAI specs need nothing.
+
 ## 🤖 LLM critic — optional, gated, any provider
 
 Deterministic checks decide ~90% of queries for free. The rest — ambiguous confidence band `[0.4, 0.8]` with a question to judge intent against — can escalate to a cheap LLM critic:
@@ -241,8 +294,10 @@ src/verisql/
   equivalence.py     migration equivalence verifier
   policy.py          invariants + governance rules (YAML)
   critic.py          provider-agnostic LLM escalation
+  dbt_gate.py        dbt CI gate: verify every model in a project
   checks/            12 checks, one file each
   connectors/        duckdb · postgres · snowflake · bigquery
+  integrations/      sql_guard · openai_tools · langchain · llamaindex
 benchmarks/          labeled corpus + live catch-rate harness (CI gate)
 examples/            quickstart · agent_loop · compliance_gateway
 ```
@@ -252,9 +307,12 @@ examples/            quickstart · agent_loop · compliance_gateway
 - [x] 12 deterministic checks, 4 connectors, policy DSL, gated multi-provider critic
 - [x] Tamper-evident audit trail + evidence packs
 - [x] Migration equivalence verifier (structural + data)
+- [x] dbt CI gate (`verisql dbt`) — verify every model in a project, no dbt dependency
+- [x] Agent framework adapters — `@sql_guard`, OpenAI function calling, LangChain, LlamaIndex
+- [ ] GitHub Action wrapping `verisql dbt` for one-click marketplace install
 - [ ] Bulk diff runner (`verisql diff --batch manifest.csv`) for 1000s of migration queries
 - [ ] Corpus expansion from Spider/BIRD + real-world misfires
-- [ ] dbt / Hex / Snowflake Cortex integration hooks
+- [ ] Hex / Snowflake Cortex integration hooks
 - [ ] Column-stats aggregate-range sanity checks
 
 ## 🤝 Contributing
